@@ -28,8 +28,8 @@ public class TaskController {
     return taskService.createTask(task);
   }
 
-  @DeleteMapping("/tasks/{id}")
-  public void deleteTask(@PathVariable Long id) {
-    taskService.deleteTask(id); // TaskServiceを使用してタスクを削除
+  @DeleteMapping("/tasks/{taskId}")
+  public void deleteTask(@PathVariable Long taskId) {
+    taskService.deleteTask(taskId); // TaskServiceを使用してタスクを削除
   }
 }

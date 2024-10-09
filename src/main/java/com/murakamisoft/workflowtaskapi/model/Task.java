@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor // 引数なしコンストラクタを生成
 @AllArgsConstructor // 引数ありコンストラクタを生成
 public class Task {
-  private Long id; // タスクのID
+  private Long taskId; // タスクのID
   private String title; // タスクのタイトル
   private String description; // タスクの説明
   private boolean completed; // タスクの完了状態

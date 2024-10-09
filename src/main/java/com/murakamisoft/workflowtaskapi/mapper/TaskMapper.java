@@ -15,9 +15,9 @@ public interface TaskMapper {
   @Select("SELECT * FROM m_task")
   List<Task> findAllTasks();
 
-  @Insert("INSERT INTO m_task (task_id, title, description, completed) VALUES (#{id}, #{title}, #{description}, #{completed})")
+  @Insert("INSERT INTO m_task (task_id, title, description, completed) VALUES (#{taskId}, #{title}, #{description}, #{completed})")
   void insertTask(Task task);
 
-  @Delete("DELETE FROM m_task WHERE task_id = #{id}")
-  void deleteTask(Long id);
+  @Delete("DELETE FROM m_task WHERE task_id = #{taskId}")
+  void deleteTask(Long taskId);
 }

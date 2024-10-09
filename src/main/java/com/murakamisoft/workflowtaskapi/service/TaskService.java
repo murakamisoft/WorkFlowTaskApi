@@ -24,8 +24,8 @@ public class TaskService {
   }
 
   // タスクを削除するメソッド
-  public void deleteTask(Long id) {
-    taskMapper.deleteTask(id); // マッパーを使用してDBからタスクを削除
+  public void deleteTask(Long taskId) {
+    taskMapper.deleteTask(taskId); // マッパーを使用してDBからタスクを削除
   }
 
 }
