@@ -1,0 +1,264 @@
+以下が最新のソース一覧
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\murakamisoft\workflowtaskapi\WorkflowTaskApiApplication.java ----- 
+package com.murakamisoft.workflowtaskapi;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class WorkflowTaskApiApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(WorkflowTaskApiApplication.class, args);
+	}
+
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\murakamisoft\workflowtaskapi\controller\TaskController.java ----- 
+package com.murakamisoft.workflowtaskapi.controller;
+
+import com.murakamisoft.workflowtaskapi.model.Task;
+import com.murakamisoft.workflowtaskapi.service.TaskService; // TaskServiceをインポート
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@RestController
+public class TaskController {
+
+  @Autowired
+  private TaskService taskService; // TaskServiceをインジェクション
+
+  @GetMapping("/tasks")
+  public List<Task> getTasks() {
+    return taskService.getAllTasks(); // TaskServiceを使用してタスクを取得
+  }
+
+  @PostMapping("/tasks")
+  public Task createTask(@RequestBody Task task) {
+    return taskService.createTask(task);
+  }
+
+  @DeleteMapping("/tasks/{id}")
+  public void deleteTask(@PathVariable Long id) {
+    taskService.deleteTask(id); // TaskServiceを使用してタスクを削除
+  }
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\murakamisoft\workflowtaskapi\mapper\TaskMapper.java ----- 
+package com.murakamisoft.workflowtaskapi.mapper;
+
+import java.util.List;
+
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
+
+import com.murakamisoft.workflowtaskapi.model.Task;
+
+@Mapper
+public interface TaskMapper {
+
+  @Select("SELECT * FROM m_task")
+  List<Task> findAllTasks();
+
+  @Insert("INSERT INTO m_task (task_id, title, description, completed) VALUES (#{id}, #{title}, #{description}, #{completed})")
+  void insertTask(Task task);
+
+  @Delete("DELETE FROM m_task WHERE task_id = #{id}")
+  void deleteTask(Long id);
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\murakamisoft\workflowtaskapi\model\Task.java ----- 
+package com.murakamisoft.workflowtaskapi.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data // ゲッター、セッター、toString、equals、hashCodeを自動生成
+@NoArgsConstructor // 引数なしコンストラクタを生成
+@AllArgsConstructor // 引数ありコンストラクタを生成
+public class Task {
+  private Long id; // タスクのID
+  private String title; // タスクのタイトル
+  private String description; // タスクの説明
+  private boolean completed; // タスクの完了状態
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\murakamisoft\workflowtaskapi\service\TaskService.java ----- 
+package com.murakamisoft.workflowtaskapi.service;
+
+import com.murakamisoft.workflowtaskapi.mapper.TaskMapper;
+import com.murakamisoft.workflowtaskapi.model.Task;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service // サービスクラスであることを示す
+public class TaskService {
+
+  @Autowired
+  private TaskMapper taskMapper; // タスクマッパーのインジェクション
+
+  // すべてのタスクを取得するメソッド
+  public List<Task> getAllTasks() {
+    return taskMapper.findAllTasks();
+  }
+
+  public Task createTask(Task task) {
+    taskMapper.insertTask(task); // 新たにタスクをDBに追加するメソッドを呼び出す
+    return task; // 追加されたタスクを返す
+  }
+
+  // タスクを削除するメソッド
+  public void deleteTask(Long id) {
+    taskMapper.deleteTask(id); // マッパーを使用してDBからタスクを削除
+  }
+
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\test\java\com\murakamisoft\workflowtaskapi\WorkflowTaskApiApplicationTests.java ----- 
+package com.murakamisoft.workflowtaskapi;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class WorkflowTaskApiApplicationTests {
+
+	@Test
+	void contextLoads() {
+	}
+
+}
+   
+----- C:\workspace\WorkflowTaskAPI\build\test-results\test\TEST-com.murakamisoft.workflowtaskapi.WorkflowTaskApiApplicationTests.xml ----- 
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.murakamisoft.workflowtaskapi.WorkflowTaskApiApplicationTests" tests="1" skipped="0" failures="0" errors="0" timestamp="2024-10-09T08:03:00" hostname="MAINPC" time="0.654">
+  <properties/>
+  <testcase name="contextLoads()" classname="com.murakamisoft.workflowtaskapi.WorkflowTaskApiApplicationTests" time="0.654"/>
+  <system-out><![CDATA[17:02:59.535 [Test worker] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.murakamisoft.workflowtaskapi.WorkflowTaskApiApplicationTests]: WorkflowTaskApiApplicationTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+17:02:59.616 [Test worker] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.murakamisoft.workflowtaskapi.WorkflowTaskApiApplication for test class com.murakamisoft.workflowtaskapi.WorkflowTaskApiApplicationTests
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::               (v3.2.10)
+
+2024-10-09T17:02:59.972+09:00  INFO 10664 --- [WorkflowTaskAPI] [    Test worker] c.m.w.WorkflowTaskApiApplicationTests    : Starting WorkflowTaskApiApplicationTests using Java 21.0.4 with PID 10664 (started by nori in C:\workspace\WorkflowTaskAPI)
+2024-10-09T17:02:59.975+09:00  INFO 10664 --- [WorkflowTaskAPI] [    Test worker] c.m.w.WorkflowTaskApiApplicationTests    : No active profile set, falling back to 1 default profile: "default"
+2024-10-09T17:03:00.439+09:00  INFO 10664 --- [WorkflowTaskAPI] [    Test worker] c.m.w.WorkflowTaskApiApplicationTests    : Started WorkflowTaskApiApplicationTests in 0.685 seconds (process running for 1.682)
+]]></system-out>
+  <system-err><![CDATA[WARNING: A Java agent has been loaded dynamically (C:\Users\nori\.gradle\caches\modules-2\files-2.1\net.bytebuddy\byte-buddy-agent\1.14.19\154da3a65b4f4a909d3e5bdec55d1b2b4cbb6ce1\byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+]]></system-err>
+</testsuite>
+   
+----- C:\workspace\WorkflowTaskAPI\src\main\resources\mybatis-config.xml ----- 
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org/DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+
+<configuration>
+    <settings>
+        <setting name="mapUnderscoreToCamelCase" value="true"/>
+    </settings>
+</configuration>
+   
+----- C:\workspace\WorkflowTaskAPI\src\main\resources\application.yml ----- 
+server:
+  port: 8080
+
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: task-api-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+  datasource:
+    url: jdbc:oracle:thin:@localhost:1521/XEPDB1
+    username: oracle_user
+    password: pass
+    driver-class-name: oracle.jdbc.OracleDriver
+
+mybatis:
+  config-location: classpath:mybatis-config.xml
+   
+----- C:\workspace\WorkflowTaskAPI\build.gradle ----- 
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.2.10'
+	id 'io.spring.dependency-management' version '1.1.6'
+}
+
+group = 'com.murakamisoft'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+    // Spring Boot Core
+    implementation 'org.springframework.boot:spring-boot-starter'
+    
+     // Spring Web (Webアプリケーション用)
+    implementation 'org.springframework.boot:spring-boot-starter-web'  // 追加
+
+    // Spring Kafka (Kafka連携用)
+    implementation 'org.springframework.kafka:spring-kafka'
+
+    // MyBatis (DBアクセス用)
+    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:2.3.1'
+    
+    // Oracle JDBC Driver (Oracle DB接続用)
+    implementation 'com.oracle.database.jdbc:ojdbc8:21.8.0.0'
+
+    // Spring Boot Test (テスト用)
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    
+    // JUnit 5 (テスト用)
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    
+    // Spring Kafka Test (Kafkaのテスト用)
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+
+     // Lombok (ボイラープレートコードを削減するためのライブラリ)
+    compileOnly 'org.projectlombok:lombok:1.18.28'
+    annotationProcessor 'org.projectlombok:lombok:1.18.28'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+   
+----- C:\workspace\WorkflowTaskAPI\settings.gradle ----- 
+rootProject.name = 'WorkflowTaskAPI'
+   
