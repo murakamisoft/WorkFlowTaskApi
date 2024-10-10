@@ -10,8 +10,6 @@ WorkflowTaskAPIは、タスク管理システムのためのRESTful APIです。
   - [技術スタック](#技術スタック)
   - [セットアップ手順](#セットアップ手順)
   - [APIエンドポイント](#apiエンドポイント)
-  - [ライセンス](#ライセンス)
-  - [お問い合わせ](#お問い合わせ)
 
 ## 機能
 
@@ -62,10 +60,3 @@ WorkflowTaskAPIは、タスク管理システムのためのRESTful APIです。
 - `POST /tasks` - 新しいタスクを作成
 - `DELETE /tasks/{taskId}` - 指定されたIDのタスクを削除
 
-## ライセンス
-
-このプロジェクトはMITライセンスの下でライセンスされています。詳細はLICENSEファイルを参照してください。
-
-## お問い合わせ
-
-開発者: [のり](mailto:nori@vbminigame.sakura.ne.jp)
