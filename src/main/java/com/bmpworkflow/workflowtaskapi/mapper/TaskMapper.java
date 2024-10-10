@@ -1,4 +1,4 @@
-package com.murakamisoft.workflowtaskapi.mapper;
+package com.bmpworkflow.workflowtaskapi.mapper;
 
 import java.util.List;
 
@@ -7,7 +7,7 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
-import com.murakamisoft.workflowtaskapi.model.Task;
+import com.bmpworkflow.workflowtaskapi.model.Task;
 
 @Mapper
 public interface TaskMapper {

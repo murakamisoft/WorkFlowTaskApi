@@ -1,6 +1,6 @@
 以下が最新のソース一覧
------ C:\workspace\WorkflowTaskAPI\src\main\java\com\murakamisoft\workflowtaskapi\WorkflowTaskApiApplication.java ----- 
-package com.murakamisoft.workflowtaskapi;
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\bmpworkflow\workflowtaskapi\WorkflowTaskApiApplication.java ----- 
+package com.bmpworkflow.workflowtaskapi;
 
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestTemplate;
 
 @SpringBootApplication
-@MapperScan("com.murakamisoft.workflowtaskapi.mapper")
+@MapperScan("com.bmpworkflow.workflowtaskapi.mapper")
 public class WorkflowTaskApiApplication {
 
   public static void main(String[] args) {
@@ -22,56 +22,63 @@ public class WorkflowTaskApiApplication {
   }
 }
    
------ C:\workspace\WorkflowTaskAPI\src\main\java\com\murakamisoft\workflowtaskapi\consumer\KafkaConsumer.java ----- 
-package com.murakamisoft.workflowtaskapi.consumer;
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\bmpworkflow\workflowtaskapi\consumer\KafkaConsumer.java ----- 
+package com.bmpworkflow.workflowtaskapi.consumer;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.bmpworkflow.workflowtaskapi.model.TaskMessage; // 新しいインポート
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.murakamisoft.workflowtaskapi.model.Task;
 import io.micrometer.common.util.StringUtils;
 
 @Component
 public class KafkaConsumer {
 
   @Autowired
-  private RestTemplate restTemplate; // RestTemplateをインジェクション
+  private RestTemplate restTemplate;
 
   @KafkaListener(topics = "task-events", groupId = "task-api-group")
   public void listen(String message) {
     System.out.println("Received message: " + message);
 
-    // StringUtilsを使ってメッセージが空またはnullかどうかをチェック
     if (StringUtils.isBlank(message)) {
       System.out.println("Received empty message, ignoring it.");
-      return; // 早期リターン
+      return;
     }
 
-    callTaskApiEndpoint(message); // 受信したメッセージに基づいてエンドポイントを呼び出す
+    callTaskApiEndpoint(message);
   }
 
   private void callTaskApiEndpoint(String message) {
-    String apiUrl = "http://localhost:8080/tasks";
-    // JSONをTaskオブジェクトに変換
     ObjectMapper objectMapper = new ObjectMapper();
     try {
-      Task task = objectMapper.readValue(message, Task.class);
-      restTemplate.postForEntity(apiUrl, task, String.class);
+      // メッセージをTaskMessageオブジェクトに変換
+      TaskMessage taskMessage = objectMapper.readValue(message, TaskMessage.class);
+      String apiUrl = "http://localhost:8080" + taskMessage.getApiEndpoint();
+
+      switch (taskMessage.getHttpMethod()) {
+        case "POST":
+          restTemplate.postForEntity(apiUrl, taskMessage.getParams(), String.class);
+          break;
+        case "DELETE":
+          restTemplate.delete(apiUrl + "/" + taskMessage.getParams().getTaskId());
+          break;
+        // 他のHTTPメソッドに対する処理を追加することもできます
+      }
     } catch (JsonProcessingException e) {
       e.printStackTrace(); // エラーログを出力
     }
-
   }
 }
    
------ C:\workspace\WorkflowTaskAPI\src\main\java\com\murakamisoft\workflowtaskapi\controller\TaskController.java ----- 
-package com.murakamisoft.workflowtaskapi.controller;
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\bmpworkflow\workflowtaskapi\controller\TaskController.java ----- 
+package com.bmpworkflow.workflowtaskapi.controller;
 
-import com.murakamisoft.workflowtaskapi.model.Task;
-import com.murakamisoft.workflowtaskapi.service.TaskService; // TaskServiceをインポート
+import com.bmpworkflow.workflowtaskapi.model.Task;
+import com.bmpworkflow.workflowtaskapi.service.TaskService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -104,8 +111,8 @@ public class TaskController {
   }
 }
    
------ C:\workspace\WorkflowTaskAPI\src\main\java\com\murakamisoft\workflowtaskapi\mapper\TaskMapper.java ----- 
-package com.murakamisoft.workflowtaskapi.mapper;
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\bmpworkflow\workflowtaskapi\mapper\TaskMapper.java ----- 
+package com.bmpworkflow.workflowtaskapi.mapper;
 
 import java.util.List;
 
@@ -114,7 +121,7 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
-import com.murakamisoft.workflowtaskapi.model.Task;
+import com.bmpworkflow.workflowtaskapi.model.Task;
 
 @Mapper
 public interface TaskMapper {
@@ -129,8 +136,8 @@ public interface TaskMapper {
   void deleteTask(Long taskId);
 }
    
------ C:\workspace\WorkflowTaskAPI\src\main\java\com\murakamisoft\workflowtaskapi\model\Task.java ----- 
-package com.murakamisoft.workflowtaskapi.model;
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\bmpworkflow\workflowtaskapi\model\Task.java ----- 
+package com.bmpworkflow.workflowtaskapi.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -146,11 +153,44 @@ public class Task {
   private boolean completed; // タスクの完了状態
 }
    
------ C:\workspace\WorkflowTaskAPI\src\main\java\com\murakamisoft\workflowtaskapi\service\TaskService.java ----- 
-package com.murakamisoft.workflowtaskapi.service;
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\bmpworkflow\workflowtaskapi\model\TaskMessage.java ----- 
+package com.bmpworkflow.workflowtaskapi.model;
 
-import com.murakamisoft.workflowtaskapi.mapper.TaskMapper;
-import com.murakamisoft.workflowtaskapi.model.Task;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data // ゲッター、セッター、toString、equals、hashCodeを自動生成
+@NoArgsConstructor // 引数なしコンストラクタを生成
+@AllArgsConstructor // 引数ありコンストラクタを生成
+public class TaskMessage {
+  private String apiEndpoint;
+  private String httpMethod;
+  private TaskMessageParams params;
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\bmpworkflow\workflowtaskapi\model\TaskMessageParams.java ----- 
+package com.bmpworkflow.workflowtaskapi.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data // ゲッター、セッター、toString、equals、hashCodeを自動生成
+@NoArgsConstructor // 引数なしコンストラクタを生成
+@AllArgsConstructor // 引数ありコンストラクタを生成
+public class TaskMessageParams {
+  private Long taskId;
+  private String title;
+  private String description;
+  private boolean completed;
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\bmpworkflow\workflowtaskapi\service\TaskService.java ----- 
+package com.bmpworkflow.workflowtaskapi.service;
+
+import com.bmpworkflow.workflowtaskapi.mapper.TaskMapper;
+import com.bmpworkflow.workflowtaskapi.model.Task;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -179,8 +219,8 @@ public class TaskService {
 
 }
    
------ C:\workspace\WorkflowTaskAPI\src\test\java\com\murakamisoft\workflowtaskapi\WorkflowTaskApiApplicationTests.java ----- 
-package com.murakamisoft.workflowtaskapi;
+----- C:\workspace\WorkflowTaskAPI\src\test\java\com\bmpworkflow\workflowtaskapi\WorkflowTaskApiApplicationTests.java ----- 
+package com.bmpworkflow.workflowtaskapi;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -194,11 +234,11 @@ class WorkflowTaskApiApplicationTests {
 
 }
    
------ C:\workspace\WorkflowTaskAPI\src\test\java\com\murakamisoft\workflowtaskapi\controller\TaskControllerTest.java ----- 
-package com.murakamisoft.workflowtaskapi.controller;
+----- C:\workspace\WorkflowTaskAPI\src\test\java\com\bmpworkflow\workflowtaskapi\controller\TaskControllerTest.java ----- 
+package com.bmpworkflow.workflowtaskapi.controller;
 
-import com.murakamisoft.workflowtaskapi.model.Task;
-import com.murakamisoft.workflowtaskapi.service.TaskService;
+import com.bmpworkflow.workflowtaskapi.model.Task;
+import com.bmpworkflow.workflowtaskapi.service.TaskService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -264,11 +304,11 @@ class TaskControllerTest {
   }
 }
    
------ C:\workspace\WorkflowTaskAPI\src\test\java\com\murakamisoft\workflowtaskapi\service\TaskServiceTest.java ----- 
-package com.murakamisoft.workflowtaskapi.service;
+----- C:\workspace\WorkflowTaskAPI\src\test\java\com\bmpworkflow\workflowtaskapi\service\TaskServiceTest.java ----- 
+package com.bmpworkflow.workflowtaskapi.service;
 
-import com.murakamisoft.workflowtaskapi.mapper.TaskMapper;
-import com.murakamisoft.workflowtaskapi.model.Task;
+import com.bmpworkflow.workflowtaskapi.mapper.TaskMapper;
+import com.bmpworkflow.workflowtaskapi.model.Task;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

@@ -1,9 +1,10 @@
-package com.murakamisoft.workflowtaskapi.service;
+package com.bmpworkflow.workflowtaskapi.service;
 
-import com.murakamisoft.workflowtaskapi.mapper.TaskMapper;
-import com.murakamisoft.workflowtaskapi.model.Task;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import com.bmpworkflow.workflowtaskapi.mapper.TaskMapper;
+import com.bmpworkflow.workflowtaskapi.model.Task;
 
 import java.util.List;
 

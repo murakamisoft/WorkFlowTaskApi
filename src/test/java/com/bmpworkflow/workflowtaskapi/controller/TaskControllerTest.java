@@ -1,7 +1,5 @@
-package com.murakamisoft.workflowtaskapi.controller;
+package com.bmpworkflow.workflowtaskapi.controller;
 
-import com.murakamisoft.workflowtaskapi.model.Task;
-import com.murakamisoft.workflowtaskapi.service.TaskService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -9,6 +7,8 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import com.bmpworkflow.workflowtaskapi.model.Task;
+import com.bmpworkflow.workflowtaskapi.service.TaskService;
 
 import java.util.ArrayList;
 import java.util.List;

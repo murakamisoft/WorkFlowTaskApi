@@ -33,7 +33,7 @@ WorkflowTaskAPIは、タスク管理システムのためのRESTful APIです。
 
 1. リポジトリをクローンします。
    ```bash
-   git clone https://github.com/murakamisoft/WorkFlowTaskApi.git
+   git clone https://github.com/bmpworkflow/WorkFlowTaskApi.git
    cd WorkFlowTaskApi
    ```
 
