@@ -194,140 +194,137 @@ class WorkflowTaskApiApplicationTests {
 
 }
    
------ C:\workspace\WorkflowTaskAPI\build\resources\main\mybatis-config.xml ----- 
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE configuration
-        PUBLIC "-//mybatis.org/DTD Mapper 3.0//EN"
-        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+----- C:\workspace\WorkflowTaskAPI\src\test\java\com\murakamisoft\workflowtaskapi\controller\TaskControllerTest.java ----- 
+package com.murakamisoft.workflowtaskapi.controller;
 
-<configuration>
-    <settings>
-        <setting name="mapUnderscoreToCamelCase" value="true"/>
-    </settings>
-</configuration>
-   
------ C:\workspace\WorkflowTaskAPI\src\main\resources\mybatis-config.xml ----- 
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE configuration
-        PUBLIC "-//mybatis.org/DTD Mapper 3.0//EN"
-        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+import com.murakamisoft.workflowtaskapi.model.Task;
+import com.murakamisoft.workflowtaskapi.service.TaskService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
-<configuration>
-    <settings>
-        <setting name="mapUnderscoreToCamelCase" value="true"/>
-    </settings>
-</configuration>
-   
------ C:\workspace\WorkflowTaskAPI\build\resources\main\application.yml ----- 
-server:
-  port: 8080
+import java.util.ArrayList;
+import java.util.List;
 
-spring:
-  kafka:
-    bootstrap-servers: localhost:9092
-    consumer:
-      group-id: task-api-group
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
-  datasource:
-    url: jdbc:oracle:thin:@localhost:1521/XEPDB1
-    username: oracle_user
-    password: pass
-    driver-class-name: oracle.jdbc.OracleDriver
+class TaskControllerTest {
 
-mybatis:
-  config-location: classpath:mybatis-config.xml
-   
------ C:\workspace\WorkflowTaskAPI\src\main\resources\application.yml ----- 
-server:
-  port: 8080
+  @InjectMocks
+  private TaskController taskController;
 
-spring:
-  kafka:
-    bootstrap-servers: localhost:9092
-    consumer:
-      group-id: task-api-group
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+  @Mock
+  private TaskService taskService;
 
-  datasource:
-    url: jdbc:oracle:thin:@localhost:1521/XEPDB1
-    username: oracle_user
-    password: pass
-    driver-class-name: oracle.jdbc.OracleDriver
+  private Task task;
 
-mybatis:
-  config-location: classpath:mybatis-config.xml
-   
------ C:\workspace\WorkflowTaskAPI\build.gradle ----- 
-plugins {
-	id 'java'
-	id 'org.springframework.boot' version '3.2.10'
-	id 'io.spring.dependency-management' version '1.1.6'
-}
+  @BeforeEach
+  void setUp() {
+    MockitoAnnotations.openMocks(this);
+    task = new Task(1L, "Test Task", "This is a test task", false);
+  }
 
-group = 'com.murakamisoft'
-version = '0.0.1-SNAPSHOT'
+  @Test
+  void getTasks() {
+    List<Task> tasks = new ArrayList<>();
+    tasks.add(task);
 
-java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
-	}
-}
+    when(taskService.getAllTasks()).thenReturn(tasks);
 
-repositories {
-	mavenCentral()
-}
+    List<Task> result = taskController.getTasks();
 
-dependencies {
-    // Spring Boot Core
-    implementation 'org.springframework.boot:spring-boot-starter'
-    
-    // Spring Web (Webアプリケーション用)
-    implementation 'org.springframework.boot:spring-boot-starter-web'  // 追加
+    assertEquals(1, result.size());
+    assertEquals("Test Task", result.get(0).getTitle());
+  }
 
-    // Spring Kafka (Kafka連携用)
-    implementation 'org.springframework.kafka:spring-kafka'
+  @Test
+  void createTask() {
+    when(taskService.createTask(task)).thenReturn(task);
 
-    // MyBatis (DBアクセス用)
-    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
+    Task result = taskController.createTask(task);
 
-    // Oracle JDBC Driver (Oracle DB接続用)
-    implementation 'com.oracle.database.jdbc:ojdbc8:21.8.0.0'
+    assertEquals("Test Task", result.getTitle());
+    verify(taskService).createTask(task);
+  }
 
-    // https://mvnrepository.com/artifact/org.apache.commons/commons-lang3
-    implementation 'org.apache.commons:commons-lang3:3.17.0'
+  @Test
+  void deleteTask() {
+    doNothing().when(taskService).deleteTask(task.getTaskId());
 
-    // Spring Boot Test (テスト用)
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    
-    // JUnit 5 (テスト用)
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    
-    // Spring Kafka Test (Kafkaのテスト用)
-    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    ResponseEntity<Void> response = new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    taskController.deleteTask(task.getTaskId());
 
-    // MyBatis test
-    testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:3.0.3'
-    
-    // Lombok (ボイラープレートコードを削減するためのライブラリ)
-    compileOnly 'org.projectlombok:lombok:1.18.28'
-    annotationProcessor 'org.projectlombok:lombok:1.18.28'
-}
-
-tasks.named('test') {
-	useJUnitPlatform()
+    assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+    verify(taskService).deleteTask(task.getTaskId());
+  }
 }
    
------ C:\workspace\WorkflowTaskAPI\settings.gradle ----- 
-rootProject.name = 'WorkflowTaskAPI'
+----- C:\workspace\WorkflowTaskAPI\src\test\java\com\murakamisoft\workflowtaskapi\service\TaskServiceTest.java ----- 
+package com.murakamisoft.workflowtaskapi.service;
+
+import com.murakamisoft.workflowtaskapi.mapper.TaskMapper;
+import com.murakamisoft.workflowtaskapi.model.Task;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+class TaskServiceTest {
+
+  @InjectMocks
+  private TaskService taskService;
+
+  @Mock
+  private TaskMapper taskMapper;
+
+  private Task task;
+
+  @BeforeEach
+  void setUp() {
+    MockitoAnnotations.openMocks(this);
+    task = new Task(1L, "Test Task", "This is a test task", false);
+  }
+
+  @Test
+  void getAllTasks() {
+    List<Task> tasks = new ArrayList<>();
+    tasks.add(task);
+
+    when(taskMapper.findAllTasks()).thenReturn(tasks);
+
+    List<Task> result = taskService.getAllTasks();
+
+    assertEquals(1, result.size());
+    assertEquals("Test Task", result.get(0).getTitle());
+  }
+
+  @Test
+  void createTask() {
+    taskService.createTask(task);
+
+    ArgumentCaptor<Task> taskCaptor = ArgumentCaptor.forClass(Task.class);
+    verify(taskMapper).insertTask(taskCaptor.capture());
+
+    assertEquals(task.getTitle(), taskCaptor.getValue().getTitle());
+  }
+
+  @Test
+  void deleteTask() {
+    taskService.deleteTask(task.getTaskId());
+    verify(taskMapper).deleteTask(task.getTaskId());
+  }
+}
    

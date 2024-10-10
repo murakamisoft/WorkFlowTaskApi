@@ -19,29 +19,29 @@ for /r %%f in (*.java) do (
     rem 空行を追加
 )
 
-for /r %%f in (*.xml) do (
-    echo Adding %%f...
-    echo ----- %%f ----- >> "%outputFile%"
-    type "%%f" >> "%outputFile%"
-    echo. >> "%outputFile%"  
-    rem 空行を追加
-)
+@REM for /r %%f in (*.xml) do (
+@REM     echo Adding %%f...
+@REM     echo ----- %%f ----- >> "%outputFile%"
+@REM     type "%%f" >> "%outputFile%"
+@REM     echo. >> "%outputFile%"  
+@REM     rem 空行を追加
+@REM )
 
-for /r %%f in (*.yml) do (
-    echo Adding %%f...
-    echo ----- %%f ----- >> "%outputFile%"
-    type "%%f" >> "%outputFile%"
-    echo. >> "%outputFile%"  
-    rem 空行を追加
-)
+@REM for /r %%f in (*.yml) do (
+@REM     echo Adding %%f...
+@REM     echo ----- %%f ----- >> "%outputFile%"
+@REM     type "%%f" >> "%outputFile%"
+@REM     echo. >> "%outputFile%"  
+@REM     rem 空行を追加
+@REM )
 
-for /r %%f in (*.gradle) do (
-    echo Adding %%f...
-    echo ----- %%f ----- >> "%outputFile%"
-    type "%%f" >> "%outputFile%"
-    echo. >> "%outputFile%"  
-    rem 空行を追加
-)
+@REM for /r %%f in (*.gradle) do (
+@REM     echo Adding %%f...
+@REM     echo ----- %%f ----- >> "%outputFile%"
+@REM     type "%%f" >> "%outputFile%"
+@REM     echo. >> "%outputFile%"  
+@REM     rem 空行を追加
+@REM )
 
 echo All files combined into %outputFile%.
 endlocal
