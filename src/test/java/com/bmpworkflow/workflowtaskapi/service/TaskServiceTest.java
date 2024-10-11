@@ -29,7 +29,7 @@ class TaskServiceTest {
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
-    task = new Task(1L, "Test Task", "This is a test task", false);
+    task = new Task(1L, "Test Task", "This is a test task", 0L);
   }
 
   @Test

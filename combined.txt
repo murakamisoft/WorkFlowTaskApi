@@ -1,0 +1,633 @@
+以下が最新のソース一覧
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\bmpworkflow\workflowtaskapi\WorkflowTaskApiApplication.java ----- 
+package com.bmpworkflow.workflowtaskapi;
+
+import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.client.RestTemplate;
+
+/**
+ * WorkflowTaskApiアプリケーションのエントリーポイントクラスです。
+ * Spring Bootアプリケーションを起動し、MyBatisのMapperスキャンを行います。
+ */
+@SpringBootApplication
+@MapperScan("com.bmpworkflow.workflowtaskapi.mapper")
+public class WorkflowTaskApiApplication {
+
+  /**
+   * メインメソッド。Spring Bootアプリケーションを起動します。
+   *
+   * @param args コマンドライン引数
+   */
+  public static void main(String[] args) {
+    SpringApplication.run(WorkflowTaskApiApplication.class, args);
+  }
+
+  /**
+   * RestTemplateのBean定義です。このBeanを他のクラスでDI（依存性注入）して使用できます。
+   *
+   * @return 新しいRestTemplateインスタンス
+   */
+  @Bean
+  public RestTemplate restTemplate() {
+    return new RestTemplate();
+  }
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\bmpworkflow\workflowtaskapi\consumer\KafkaConsumer.java ----- 
+package com.bmpworkflow.workflowtaskapi.consumer;
+
+import com.bmpworkflow.workflowtaskapi.model.TaskMessage;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
+import io.micrometer.common.util.StringUtils;
+
+/**
+ * Kafkaメッセージを消費するクラスです。Kafkaの「task-events」トピックからメッセージを受信し、
+ * 受信したメッセージを基にTask APIエンドポイントを呼び出します。
+ */
+@Component
+public class KafkaConsumer {
+
+  @Autowired
+  private RestTemplate restTemplate;
+
+  /**
+   * Kafkaの「task-events」トピックからメッセージをリッスンします。
+   * 
+   * @param message 受信したメッセージ
+   */
+  @KafkaListener(topics = "task-events", groupId = "task-api-group")
+  public void listen(String message) {
+    System.out.println("Received message: " + message);
+
+    // メッセージが空白の場合は処理を終了
+    if (StringUtils.isBlank(message)) {
+      System.out.println("Received empty message, ignoring it.");
+      return;
+    }
+
+    // メッセージを処理し、APIエンドポイントを呼び出す
+    callTaskApiEndpoint(message);
+  }
+
+  /**
+   * 受信したメッセージをTaskMessageオブジェクトに変換し、対応するAPIエンドポイントを呼び出します。
+   * 
+   * @param message Kafkaから受信したメッセージ
+   */
+  private void callTaskApiEndpoint(String message) {
+    ObjectMapper objectMapper = new ObjectMapper();
+    try {
+      // メッセージをTaskMessageオブジェクトに変換
+      TaskMessage taskMessage = objectMapper.readValue(message, TaskMessage.class);
+      String apiUrl = "http://localhost:8080" + taskMessage.getApiEndpoint();
+
+      // HTTPメソッドに応じた処理を行う
+      switch (taskMessage.getHttpMethod()) {
+        case "POST":
+          restTemplate.postForEntity(apiUrl, taskMessage.getParams(), String.class);
+          break;
+        case "DELETE":
+          restTemplate.delete(apiUrl + "/" + taskMessage.getParams().getTaskId());
+          break;
+        // 他のHTTPメソッドに対する処理を追加することもできます
+      }
+    } catch (JsonProcessingException e) {
+      // JSON処理エラー時のログ出力
+      e.printStackTrace();
+    }
+  }
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\bmpworkflow\workflowtaskapi\controller\TaskController.java ----- 
+package com.bmpworkflow.workflowtaskapi.controller;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.bmpworkflow.workflowtaskapi.model.Task;
+import com.bmpworkflow.workflowtaskapi.service.TaskService;
+
+import java.util.List;
+
+@RestController
+public class TaskController {
+
+  @Autowired
+  private TaskService taskService; // TaskServiceをインジェクション
+
+  @GetMapping("/tasks")
+  public List<Task> getTasks() {
+    return taskService.getAllTasks(); // TaskServiceを使用してタスクを取得
+  }
+
+  @PostMapping("/tasks")
+  public Task createTask(@RequestBody Task task) {
+    return taskService.createTask(task);
+  }
+
+  @DeleteMapping("/tasks/{taskId}")
+  public void deleteTask(@PathVariable Long taskId) {
+    taskService.deleteTask(taskId); // TaskServiceを使用してタスクを削除
+  }
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\bmpworkflow\workflowtaskapi\mapper\TaskMapper.java ----- 
+package com.bmpworkflow.workflowtaskapi.mapper;
+
+import java.util.List;
+
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
+
+import com.bmpworkflow.workflowtaskapi.model.Task;
+
+@Mapper
+public interface TaskMapper {
+
+  @Select("SELECT * FROM m_task")
+  List<Task> findAllTasks();
+
+  @Insert("INSERT INTO m_task (task_id, title, description, completed) VALUES (#{taskId}, #{title}, #{description}, #{completed})")
+  void insertTask(Task task);
+
+  @Delete("DELETE FROM m_task WHERE task_id = #{taskId}")
+  void deleteTask(Long taskId);
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\bmpworkflow\workflowtaskapi\model\Task.java ----- 
+package com.bmpworkflow.workflowtaskapi.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data // ゲッター、セッター、toString、equals、hashCodeを自動生成
+@NoArgsConstructor // 引数なしコンストラクタを生成
+@AllArgsConstructor // 引数ありコンストラクタを生成
+public class Task {
+  private Long taskId; // タスクのID
+  private String title; // タスクのタイトル
+  private String description; // タスクの説明
+  private Long completed; // タスクの完了状態
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\bmpworkflow\workflowtaskapi\model\TaskMessage.java ----- 
+package com.bmpworkflow.workflowtaskapi.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data // ゲッター、セッター、toString、equals、hashCodeを自動生成
+@NoArgsConstructor // 引数なしコンストラクタを生成
+@AllArgsConstructor // 引数ありコンストラクタを生成
+public class TaskMessage {
+  private String apiEndpoint;
+  private String httpMethod;
+  private TaskMessageParams params;
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\bmpworkflow\workflowtaskapi\model\TaskMessageParams.java ----- 
+package com.bmpworkflow.workflowtaskapi.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data // ゲッター、セッター、toString、equals、hashCodeを自動生成
+@NoArgsConstructor // 引数なしコンストラクタを生成
+@AllArgsConstructor // 引数ありコンストラクタを生成
+public class TaskMessageParams {
+  private Long taskId;
+  private String title;
+  private String description;
+  private Long completed;
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\main\java\com\bmpworkflow\workflowtaskapi\service\TaskService.java ----- 
+package com.bmpworkflow.workflowtaskapi.service;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.bmpworkflow.workflowtaskapi.mapper.TaskMapper;
+import com.bmpworkflow.workflowtaskapi.model.Task;
+
+import java.util.List;
+
+@Service // サービスクラスであることを示す
+public class TaskService {
+
+  @Autowired
+  private TaskMapper taskMapper; // タスクマッパーのインジェクション
+
+  // すべてのタスクを取得するメソッド
+  public List<Task> getAllTasks() {
+    return taskMapper.findAllTasks();
+  }
+
+  public Task createTask(Task task) {
+    taskMapper.insertTask(task); // 新たにタスクをDBに追加するメソッドを呼び出す
+    return task; // 追加されたタスクを返す
+  }
+
+  // タスクを削除するメソッド
+  public void deleteTask(Long taskId) {
+    taskMapper.deleteTask(taskId); // マッパーを使用してDBからタスクを削除
+  }
+
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\test\java\com\bmpworkflow\workflowtaskapi\WorkflowTaskApiApplicationTests.java ----- 
+package com.bmpworkflow.workflowtaskapi;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
+import org.springframework.web.client.RestTemplate;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@SpringBootTest
+class WorkflowTaskApiApplicationTests {
+
+  @Autowired
+  private ApplicationContext applicationContext;
+
+  @Test
+  void contextLoads() {
+    // アプリケーションコンテキストが正しくロードされていることを確認
+    assertThat(applicationContext).isNotNull();
+  }
+
+  @Test
+  void restTemplateBeanShouldBeDefined() {
+    // RestTemplateのBeanが正しく定義されていることを確認
+    RestTemplate restTemplate = applicationContext.getBean(RestTemplate.class);
+    assertThat(restTemplate).isNotNull();
+  }
+
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\test\java\com\bmpworkflow\workflowtaskapi\consumer\KafkaConsumerTest.java ----- 
+package com.bmpworkflow.workflowtaskapi.consumer;
+
+import com.bmpworkflow.workflowtaskapi.model.TaskMessage;
+import com.bmpworkflow.workflowtaskapi.model.TaskMessageParams;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.web.client.RestTemplate;
+import static org.mockito.Mockito.*;
+
+class KafkaConsumerTest {
+
+  @Mock
+  private RestTemplate restTemplate;
+
+  @InjectMocks
+  private KafkaConsumer kafkaConsumer;
+
+  private ObjectMapper objectMapper;
+
+  @BeforeEach
+  void setUp() {
+    MockitoAnnotations.openMocks(this);
+    objectMapper = new ObjectMapper();
+  }
+
+  @Test
+  void listen_withEmptyMessage_shouldNotCallApiEndpoint() {
+    // Given
+    String emptyMessage = "";
+
+    // When
+    kafkaConsumer.listen(emptyMessage);
+
+    // Then
+    // APIエンドポイントを呼び出していないことを確認
+    verify(restTemplate, never()).postForEntity(anyString(), any(), any());
+    verify(restTemplate, never()).delete(anyString());
+  }
+
+  @Test
+  void listen_withValidMessage_shouldCallPostApiEndpoint() throws JsonProcessingException {
+    // Given
+    TaskMessage taskMessage = new TaskMessage();
+    taskMessage.setHttpMethod("POST");
+    taskMessage.setApiEndpoint("/tasks");
+    taskMessage.setParams(new TaskMessageParams(null, "123", "Test task", 0L));
+
+    String validMessage = objectMapper.writeValueAsString(taskMessage);
+
+    // When
+    kafkaConsumer.listen(validMessage);
+
+    // Then
+    // POSTエンドポイントが呼び出されたことを確認
+    verify(restTemplate, times(1)).postForEntity(eq("http://localhost:8080/tasks"), eq(taskMessage.getParams()),
+        eq(String.class));
+  }
+
+  @Test
+  void listen_withValidMessage_shouldCallDeleteApiEndpoint() throws JsonProcessingException {
+    // Given
+    TaskMessage taskMessage = new TaskMessage();
+    taskMessage.setHttpMethod("DELETE");
+    taskMessage.setApiEndpoint("/tasks");
+    TaskMessageParams params = new TaskMessageParams(1L, "123", "Test task", 0L);
+    taskMessage.setParams(params);
+
+    String validMessage = objectMapper.writeValueAsString(taskMessage);
+
+    // When
+    kafkaConsumer.listen(validMessage);
+
+    // Then
+    // DELETEエンドポイントが呼び出されたことを確認
+    verify(restTemplate, times(1)).delete(eq("http://localhost:8080/tasks/1"));
+  }
+
+  @Test
+  void listen_withInvalidJson_shouldHandleJsonProcessingException() throws JsonProcessingException {
+    // Given
+    String invalidJson = "invalid json";
+
+    // When
+    kafkaConsumer.listen(invalidJson);
+
+    // Then
+    // エンドポイントが呼び出されていないことを確認
+    verify(restTemplate, never()).postForEntity(anyString(), any(), any());
+    verify(restTemplate, never()).delete(anyString());
+  }
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\test\java\com\bmpworkflow\workflowtaskapi\controller\TaskControllerTest.java ----- 
+package com.bmpworkflow.workflowtaskapi.controller;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import com.bmpworkflow.workflowtaskapi.model.Task;
+import com.bmpworkflow.workflowtaskapi.service.TaskService;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+class TaskControllerTest {
+
+  @InjectMocks
+  private TaskController taskController;
+
+  @Mock
+  private TaskService taskService;
+
+  private Task task;
+
+  @BeforeEach
+  void setUp() {
+    MockitoAnnotations.openMocks(this);
+    task = new Task(1L, "Test Task", "This is a test task", 0L);
+  }
+
+  @Test
+  void getTasks() {
+    List<Task> tasks = new ArrayList<>();
+    tasks.add(task);
+
+    when(taskService.getAllTasks()).thenReturn(tasks);
+
+    List<Task> result = taskController.getTasks();
+
+    assertEquals(1, result.size());
+    assertEquals("Test Task", result.get(0).getTitle());
+  }
+
+  @Test
+  void createTask() {
+    when(taskService.createTask(task)).thenReturn(task);
+
+    Task result = taskController.createTask(task);
+
+    assertEquals("Test Task", result.getTitle());
+    verify(taskService).createTask(task);
+  }
+
+  @Test
+  void deleteTask() {
+    doNothing().when(taskService).deleteTask(task.getTaskId());
+
+    ResponseEntity<Void> response = new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    taskController.deleteTask(task.getTaskId());
+
+    assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+    verify(taskService).deleteTask(task.getTaskId());
+  }
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\test\java\com\bmpworkflow\workflowtaskapi\mapper\TaskMapperTest.java ----- 
+package com.bmpworkflow.workflowtaskapi.mapper;
+
+import com.bmpworkflow.workflowtaskapi.model.Task;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.test.context.jdbc.Sql;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@MybatisTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Sql(scripts = "/test-schema.sql") // テスト用のスキーマをセットアップ
+class TaskMapperTest {
+
+  @Autowired
+  private TaskMapper taskMapper;
+
+  @BeforeEach
+  void setUp() {
+    // テスト前に必要ならデータ初期化など
+  }
+
+  @Test
+  void findAllTasks_shouldReturnTasks() {
+    // Given: テストデータがある状態
+    Task task1 = new Task();
+    task1.setTaskId(1L);
+    task1.setTitle("Task 1");
+    task1.setDescription("Description 1");
+    task1.setCompleted(0L);
+    taskMapper.insertTask(task1);
+
+    Task task2 = new Task();
+    task2.setTaskId(2L);
+    task2.setTitle("Task 2");
+    task2.setDescription("Description 2");
+    task2.setCompleted(1L);
+    taskMapper.insertTask(task2);
+
+    // When
+    List<Task> tasks = taskMapper.findAllTasks();
+
+    // Then
+    assertThat(tasks).hasSize(2);
+    assertThat(tasks.get(0).getTitle()).isEqualTo("Task 1");
+    assertThat(tasks.get(1).getTitle()).isEqualTo("Task 2");
+  }
+
+  @Test
+  void insertTask_shouldAddTaskToDatabase() {
+    // Given
+    Task task = new Task();
+    task.setTaskId(3L);
+    task.setTitle("New Task");
+    task.setDescription("New Description");
+    task.setCompleted(0L);
+
+    // When
+    taskMapper.insertTask(task);
+
+    // Then
+    List<Task> tasks = taskMapper.findAllTasks();
+    assertThat(tasks).extracting(Task::getTitle).contains("New Task");
+  }
+
+  @Test
+  void deleteTask_shouldRemoveTaskFromDatabase() {
+    // Given
+    Task task = new Task();
+    task.setTaskId(4L);
+    task.setTitle("Task to Delete");
+    task.setDescription("Delete Description");
+    task.setCompleted(0L);
+    taskMapper.insertTask(task);
+
+    // When
+    taskMapper.deleteTask(4L);
+
+    // Then
+    List<Task> tasks = taskMapper.findAllTasks();
+    assertThat(tasks).extracting(Task::getTaskId).doesNotContain(4L);
+  }
+}
+   
+----- C:\workspace\WorkflowTaskAPI\src\test\java\com\bmpworkflow\workflowtaskapi\service\TaskServiceTest.java ----- 
+package com.bmpworkflow.workflowtaskapi.service;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import com.bmpworkflow.workflowtaskapi.mapper.TaskMapper;
+import com.bmpworkflow.workflowtaskapi.model.Task;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+class TaskServiceTest {
+
+  @InjectMocks
+  private TaskService taskService;
+
+  @Mock
+  private TaskMapper taskMapper;
+
+  private Task task;
+
+  @BeforeEach
+  void setUp() {
+    MockitoAnnotations.openMocks(this);
+    task = new Task(1L, "Test Task", "This is a test task", 0L);
+  }
+
+  @Test
+  void getAllTasks() {
+    List<Task> tasks = new ArrayList<>();
+    tasks.add(task);
+
+    when(taskMapper.findAllTasks()).thenReturn(tasks);
+
+    List<Task> result = taskService.getAllTasks();
+
+    assertEquals(1, result.size());
+    assertEquals("Test Task", result.get(0).getTitle());
+  }
+
+  @Test
+  void createTask() {
+    taskService.createTask(task);
+
+    ArgumentCaptor<Task> taskCaptor = ArgumentCaptor.forClass(Task.class);
+    verify(taskMapper).insertTask(taskCaptor.capture());
+
+    assertEquals(task.getTitle(), taskCaptor.getValue().getTitle());
+  }
+
+  @Test
+  void deleteTask() {
+    taskService.deleteTask(task.getTaskId());
+    verify(taskMapper).deleteTask(task.getTaskId());
+  }
+}
+   
+----- C:\workspace\WorkflowTaskAPI\build\resources\test\schema.sql ----- 
+CREATE TABLE IF NOT EXISTS m_task (
+    task_id BIGINT PRIMARY KEY,    -- タスクの一意なID
+    title VARCHAR(255) NOT NULL,   -- タスクのタイトル
+    description TEXT,              -- タスクの説明
+    completed INT NOT NULL         -- タスクの完了状況（0: 未完了, 1: 完了など）
+);
+
+INSERT INTO m_task (task_id, title, description, completed) 
+VALUES (1, 'Test Task', 'This is a test task.', 0);
+   
+----- C:\workspace\WorkflowTaskAPI\src\test\resources\schema.sql ----- 
+CREATE TABLE IF NOT EXISTS m_task (
+    task_id BIGINT PRIMARY KEY,    -- タスクの一意なID
+    title VARCHAR(255) NOT NULL,   -- タスクのタイトル
+    description TEXT,              -- タスクの説明
+    completed INT NOT NULL         -- タスクの完了状況（0: 未完了, 1: 完了など）
+);
+
+INSERT INTO m_task (task_id, title, description, completed) 
+VALUES (1, 'Test Task', 'This is a test task.', 0);
+   

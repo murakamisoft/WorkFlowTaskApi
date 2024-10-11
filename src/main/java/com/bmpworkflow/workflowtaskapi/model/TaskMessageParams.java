@@ -11,5 +11,5 @@ public class TaskMessageParams {
   private Long taskId;
   private String title;
   private String description;
-  private boolean completed;
+  private Long completed;
 }

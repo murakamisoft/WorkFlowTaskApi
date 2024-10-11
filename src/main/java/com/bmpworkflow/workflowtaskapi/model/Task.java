@@ -11,5 +11,5 @@ public class Task {
   private Long taskId; // タスクのID
   private String title; // タスクのタイトル
   private String description; // タスクの説明
-  private boolean completed; // タスクの完了状態
+  private Long completed; // タスクの完了状態
 }

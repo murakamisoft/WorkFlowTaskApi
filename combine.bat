@@ -19,6 +19,14 @@ for /r %%f in (*.java) do (
     rem 空行を追加
 )
 
+for /r %%f in (*.sql) do (
+    echo Adding %%f...
+    echo ----- %%f ----- >> "%outputFile%"
+    type "%%f" >> "%outputFile%"
+    echo. >> "%outputFile%"  
+    rem 空行を追加
+)
+
 @REM for /r %%f in (*.xml) do (
 @REM     echo Adding %%f...
 @REM     echo ----- %%f ----- >> "%outputFile%"
